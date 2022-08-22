@@ -1,0 +1,237 @@
+# Q1: How many distinct dates are there in the saledate column of the transaction table for each month/year/store combination in the database? Sort your results by the number of days per combination in ascending order.
+
+SELECT COUNT(DISTINCT saledate), EXTRACT(MONTH from saledate) AS month_num, EXTRACT(YEAR from saledate) AS year_num, store
+FROM trnsact 
+GROUP BY month_num, year_num, store
+ORDER BY COUNT(DISTINCT saledate) ASC;
+
+#Q2: Use a CASE statement within an aggregate function to determine which sku had the greatest total sales during the combined summer months of June, July, and August.
+
+SELECT SUM(summer_trns.amt), summer_trns.sku
+FROM (SELECT DISTINCT * FROM trnsact WHERE EXTRACT(MONTH from saledate) IN (6,7,8)) AS summer_trns
+WHERE summer_trns.stype='P'  
+GROUP BY summer_trns.sku
+ORDER BY SUM(summer_trns.amt) DESC;
+
+#Q3: What is the average daily revenue for each store/month/year combination in the database? Calculate this by dividing the total revenue for a group by the number of sales days available in the transaction table for that group.
+
+SELECT EXTRACT(YEAR from saledate)||EXTRACT(MONTH from saledate) AS month_year, store,
+SUM(amt)/COUNT(DISTINCT saledate) AS avg_sales  
+FROM trnsact 
+WHERE month_year IN 
+(SELECT EXTRACT(YEAR from saledate)||EXTRACT(MONTH from saledate) FROM trnsact 
+GROUP BY EXTRACT(YEAR from saledate)||EXTRACT(MONTH from saledate), store 
+HAVING COUNT(DISTINCT saledate)>19)
+GROUP BY month_year, store
+ORDER BY COUNT(DISTINCT saledate) ASC;
+
+#Q4: What is the average daily revenue brought in by Dillard’s stores in areas of high, medium, or low levels of high school education?
+
+Database ua_dillards;
+SELECT SUM(c_t.total_sale)/SUM(num_days), 
+CASE WHEN msa_high BETWEEN 50 AND 60 THEN 'low'
+WHEN msa_high BETWEEN 60.01 AND 70 THEN 'medium'
+WHEN msa_high>70 THEN 'high' END AS education  
+FROM store_msa s INNER JOIN 
+(SELECT SUM(amt) AS total_sale, COUNT(DISTINCT saledate) AS num_days,  
+EXTRACT(MONTH from saledate)||EXTRACT(YEAR from saledate) AS year_month, store 
+FROM trnsact 
+WHERE stype='P'
+HAVING COUNT(DISTINCT saledate)>=21 
+GROUP BY year_month, store) AS c_t 
+ON s.store=c_t.store
+GROUP BY education; 
+
+#Q5: What is the brand of the sku with the greatest standard deviation in sprice? Only examine skus that have been part of over 100 transactions.
+
+Database ua_dillards;
+SELECT s.sku, s.brand, sku_sd.sd
+FROM skuinfo s JOIN 
+(SELECT sku, STDDEV_SAMP(ALL sprice) AS sd 
+FROM trnsact
+HAVING COUNT(*)>100
+GROUP BY sku) AS sku_sd
+ON s.sku=sku_sd.sku
+ORDER BY sku_sd.sd DESC;
+
+#Q6: What was the average daily revenue Dillard’s brought in during each month of the year?
+
+Database ua_dillards;
+SELECT SUM(amt)/COUNT(DISTINCT saledate) AS avg_sales,
+EXTRACT(MONTH from saledate) AS month_num 
+FROM trnsact 
+WHERE stype='P' AND NOT(EXTRACT(MONTH from saledate)=8 AND EXTRACT(YEAR from saledate)=2005) 
+GROUP BY month_num
+ORDER BY avg_sales;
+
+#Q7: Which department, in which city and state of what store, had the greatest % increase in average daily sales revenue from November to December?
+
+DATABASE ua_dillards;
+SELECT (SUM(nov_dec_sale.dec_sale)-SUM(nov_dec_sale.nov_sale))/SUM(nov_dec_sale.nov_sale) AS percent_in, 
+nov_dec_sale.dept, nov_dec_sale.store, nov_dec_sale.city, nov_dec_sale.state 
+FROM
+	(SELECT CASE WHEN sales.month_n=11 THEN SUM(sales.total_sale) END AS nov_sale,
+	CASE WHEN sales.month_n=12 THEN SUM(sales.total_sale) END AS dec_sale, 
+	sales.month_n, sku_c.dept, st.store, st.city, st.state
+	FROM
+		(SELECT sku, SUM(amt) AS total_sale, COUNT(DISTINCT saledate) AS num_days,  
+		EXTRACT(MONTH from saledate) AS month_n, EXTRACT(YEAR from saledate) AS year_n, 
+		store 
+		FROM trnsact 
+		WHERE stype='P' AND EXTRACT(MONTH from saledate) IN (11,12)  
+		HAVING COUNT(DISTINCT saledate)>=21 AND COUNT(*)>100
+		GROUP BY sku, month_n, year_n, store) AS sales 
+	JOIN (SELECT sku, dept FROM skuinfo) AS sku_c ON sku_c.sku=sales.sku
+	JOIN strinfo st ON sales.store=st.store
+	GROUP BY sales.month_n, sku_c.dept, st.store, st.city, st.state) AS nov_dec_sale 
+GROUP BY nov_dec_sale.dept, nov_dec_sale.store, nov_dec_sale.city, nov_dec_sale.state
+HAVING SUM(nov_dec_sale.nov_sale) <>0 AND SUM(nov_dec_sale.dec_sale)<>0
+ORDER BY percent_in DESC;
+
+#Q8: Assign a ranking number to the months in which each store has the highest average daily sales (total sales in a month divided by number of days in that month):
+
+DATABASE ua_dillards;
+SELECT SUM(amt) AS total_sales, SUM(amt)/COUNT(DISTINCT saledate) AS avg_d_sales, COUNT(DISTINCT saledate) AS num_days,
+EXTRACT(MONTH from saledate) AS month_n, store,
+ROW_NUMBER() OVER (PARTITION BY store ORDER BY avg_d_sales DESC)  
+FROM trnsact 
+WHERE stype='P' 
+HAVING COUNT(DISTINCT saledate)>=21
+GROUP BY month_n, store
+ORDER BY store, avg_d_sales DESC;
+
+#Q9:Which sku number had the greatest increase in total sales revenue from November to December?
+
+Database ua_dillards;
+SELECT (SUM(sku_sale.dec_sale)-SUM(sku_sale.nov_sale)) AS total_in, sku_sale.sku
+FROM
+(SELECT CASE WHEN sales.month_n=11 THEN SUM(sales.total_sale) END AS nov_sale,
+	CASE WHEN sales.month_n=12 THEN SUM(sales.total_sale) END AS dec_sale, 
+	sales.month_n, sku_c.sku
+	FROM
+		(SELECT sku, SUM(amt) AS total_sale, COUNT(DISTINCT saledate) AS num_days,  
+		EXTRACT(MONTH from saledate) AS month_n, EXTRACT(YEAR from saledate) AS year_n, 
+		store 
+		FROM trnsact 
+		WHERE stype='P' AND EXTRACT(MONTH from saledate) IN (11,12)  
+		GROUP BY sku, month_n, year_n, store) AS sales 
+	JOIN (SELECT sku, dept FROM skuinfo) AS sku_c ON sku_c.sku=sales.sku
+	JOIN strinfo st ON sales.store=st.store
+	GROUP BY sales.month_n, sku_c.sku) AS sku_sale
+GROUP BY sku_sale.sku
+ORDER BY total_in DESC;
+
+#Q10: Divide the msa_income groups up so that msa_incomes between 1 and 20,000 are labeled 'low', msa_incomes between 20,001 and 30,000 are labeled 'med-low', msa_incomes between 30,001 and 40,000 are labeled 'med-high', and msa_incomes between 40,001 and 60,000 are labeled 'high'.  Which of these groups has the highest average daily revenue (as defined in Teradata Week 5 Exercise Guide) per store?
+
+Database ua_dillards;
+SELECT SUM(sale_by_income.t_sale) AS total_sale, SUM(sale_by_income.t_days) AS total_days,
+COUNT(sale_by_income.store) AS num_store, SUM(sale_by_income.t_sale)/SUM(sale_by_income.t_days)/COUNT(sale_by_income.store),
+sale_by_income.income
+FROM 
+(SELECT SUM(c_t.total_sale) AS t_sale, SUM(c_t.num_days) AS t_days, s.store, s.city, s.state,
+CASE WHEN MEDIAN(s.msa_income) BETWEEN 20001 AND 30000 THEN 'med-low'
+WHEN MEDIAN(s.msa_income) BETWEEN 1 AND 20000 THEN 'low'
+WHEN MEDIAN(s.msa_income) BETWEEN 30001 AND 40000 THEN 'med-high'
+WHEN MEDIAN(s.msa_income) BETWEEN 40001 AND 60000 THEN 'high'
+END AS income
+FROM store_msa s INNER JOIN 
+(SELECT SUM(amt) AS total_sale, COUNT(DISTINCT saledate) AS num_days,  
+EXTRACT(MONTH from saledate)||EXTRACT(YEAR from saledate) AS year_month, store 
+FROM trnsact 
+WHERE stype='P' AND NOT(EXTRACT(MONTH from saledate)=8 AND EXTRACT(YEAR from saledate)=2005) 
+HAVING COUNT(DISTINCT saledate)>=21 
+GROUP BY year_month, store) AS c_t 
+ON s.store=c_t.store
+GROUP BY s.store, s.city, s.state) AS sale_by_income
+GROUP BY sale_by_income.income;
+
+#Q11: Which department within a particular store had the greatest decrease in average daily sales revenue from August to September, and in what city and state was that store located?
+
+Database ua_dillards;
+SELECT (sum(sep_aug_sale.sep_sale)/sum(sep_aug_sale.sep_days))-(sum(sep_aug_sale.aug_sale)/sum(sep_aug_sale.aug_days)) AS avg_daily_rev_inc,
+sep_aug_sale.dept, sep_aug_sale.store, sep_aug_sale.city, sep_aug_sale.state 
+FROM 
+  (SELECT CASE WHEN EXTRACT(MONTH from sales_w_info.saledate)=8 THEN sum(sales_w_info.amt) END AS aug_sale,
+  CASE WHEN EXTRACT(MONTH from sales_w_info.saledate)=9 THEN sum(sales_w_info.amt) END AS sep_sale, 
+  CASE WHEN EXTRACT(MONTH from sales_w_info.saledate)=8 THEN COUNT(DISTINCT sales_w_info.saledate) END AS aug_days,
+  CASE WHEN EXTRACT(MONTH from sales_w_info.saledate)=9 THEN COUNT(DISTINCT sales_w_info.saledate) END AS sep_days,
+  EXTRACT(MONTH from sales_w_info.saledate) AS month_n,
+  sales_w_info.dept, sales_w_info.store, sales_w_info.city, sales_w_info.state 
+  FROM
+    (SELECT sku_dept.sku, sku_dept.dept, sales_by_sku.saledate, sales_by_sku.amt, sales_by_sku.store, st.city, st.state
+    FROM
+    (SELECT sk.sku, sk.dept FROM skuinfo sk) AS sku_dept
+    JOIN 
+      (SELECT t.sku, t.saledate, t.store, t.amt
+      FROM trnsact t
+      WHERE t.stype='P' AND EXTRACT(MONTH from t.saledate) IN (8,9)) AS sales_by_sku 
+    ON sku_dept.sku=sales_by_sku.sku 
+    JOIN strinfo st
+    ON st.store=sales_by_sku.store) AS sales_w_info
+    GROUP BY EXTRACT(MONTH from sales_w_info.saledate), sales_w_info.dept, sales_w_info.store, sales_w_info.city,   sales_w_info.state) AS sep_aug_sale
+  GROUP BY sep_aug_sale.dept, sep_aug_sale.store, sep_aug_sale.city, sep_aug_sale.state 
+  HAVING SUM(sep_aug_sale.sep_sale)>1000 AND SUM(sep_aug_sale.aug_sale)>1000 
+  ORDER BY avg_daily_rev_inc ASC; 
+ 
+# Q12: Calculate and rank the average daily revenue % increase of each department in each store, each city, state, etc. from nov to dec: 
+Database ua_dillards;
+SELECT ((sum(dec_nov_sale.dec_sale)/sum(dec_nov_sale.dec_days))-(sum(dec_nov_sale.nov_sale)/sum(dec_nov_sale.nov_days)))/(sum(dec_nov_sale.dec_sale)/sum(dec_nov_sale.dec_days)) AS avg_daily_rev_inc,
+dec_nov_sale.dept, dec_nov_sale.store, dec_nov_sale.city, dec_nov_sale.state 
+FROM 
+  (SELECT CASE WHEN EXTRACT(MONTH from sales_w_info.saledate)=11 THEN sum(sales_w_info.amt) END AS nov_sale,
+  CASE WHEN EXTRACT(MONTH from sales_w_info.saledate)=12 THEN sum(sales_w_info.amt) END AS dec_sale, 
+  CASE WHEN EXTRACT(MONTH from sales_w_info.saledate)=11 THEN COUNT(DISTINCT sales_w_info.saledate) END AS nov_days,
+  CASE WHEN EXTRACT(MONTH from sales_w_info.saledate)=12 THEN COUNT(DISTINCT sales_w_info.saledate) END AS dec_days,
+  EXTRACT(MONTH from sales_w_info.saledate) AS month_n,
+  sales_w_info.dept, sales_w_info.store, sales_w_info.city, sales_w_info.state 
+  FROM
+    (SELECT sku_dept.sku, sku_dept.dept, sales_by_sku.saledate, sales_by_sku.amt, sales_by_sku.store, st.city, st.state
+    FROM
+    (SELECT sk.sku, sk.dept FROM skuinfo sk) AS sku_dept
+    JOIN 
+    (SELECT t.sku, t.saledate, t.store, t.amt
+    FROM trnsact t
+    WHERE t.stype='P' AND EXTRACT(MONTH from t.saledate) IN (11,12)) AS sales_by_sku 
+    ON sku_dept.sku=sales_by_sku.sku 
+    JOIN strinfo st
+    ON st.store=sales_by_sku.store) AS sales_w_info
+  GROUP BY EXTRACT(MONTH from sales_w_info.saledate), sales_w_info.dept, sales_w_info.store, sales_w_info.city,  sales_w_info.state) AS dec_nov_sale
+GROUP BY dec_nov_sale.dept, dec_nov_sale.store, dec_nov_sale.city, dec_nov_sale.state 
+HAVING SUM(dec_nov_sale.dec_sale)>1000 AND SUM(dec_nov_sale.nov_sale)>1000 
+ORDER BY avg_daily_rev_inc DESC; 
+
+#Q13: Identify which department, in which city and state of what store, had the greatest DECREASE in the number of items sold from August to September.  How many fewer items did that department sell in September compared to August?
+
+SELECT sum(sep_aug_sale.sep_sale)-sum(sep_aug_sale.aug_sale),
+sep_aug_sale.dept, sep_aug_sale.store, sep_aug_sale.city, sep_aug_sale.state 
+FROM 
+  (SELECT CASE WHEN EXTRACT(MONTH from sales_w_info.saledate)=8 THEN SUM(sales_w_info.quantity) END AS aug_sale,
+  CASE WHEN EXTRACT(MONTH from sales_w_info.saledate)=9 THEN SUM(sales_w_info.quantity) END AS sep_sale, 
+  EXTRACT(MONTH from sales_w_info.saledate) AS month_n, sales_w_info.dept, sales_w_info.store, sales_w_info.city, sales_w_info.state 
+  FROM
+  (SELECT sku_dept.sku, sku_dept.dept, sales_by_sku.saledate, sales_by_sku.quantity, sales_by_sku.store, st.city, st.state
+  FROM
+  (SELECT sk.sku, sk.dept FROM skuinfo sk) AS sku_dept
+  JOIN 
+  (SELECT t.sku, t.saledate, t.store, t.quantity
+  FROM trnsact t
+  WHERE t.stype='P' AND EXTRACT(MONTH from t.saledate) IN (8,9) AND EXTRACT(YEAR from t.saledate)<>2005) AS sales_by_sku 
+  ON sku_dept.sku=sales_by_sku.sku 
+  JOIN strinfo st
+  ON st.store=sales_by_sku.store) AS sales_w_info
+  GROUP BY EXTRACT(MONTH from sales_w_info.saledate), sales_w_info.dept, sales_w_info.store, sales_w_info.city, sales_w_info.state) AS sep_aug_sale
+GROUP BY sep_aug_sale.dept, sep_aug_sale.store, sep_aug_sale.city, sep_aug_sale.state 
+HAVING sum(sep_aug_sale.sep_sale) >0 AND sum(sep_aug_sale.aug_sale)>0
+ORDER BY sum(sep_aug_sale.sep_sale)-sum(sep_aug_sale.aug_sale) ASC; 
+
+#Q14: For each store, determine the month with the minimum average daily revenue (as defined in Teradata Week 5 Exercise Guide) .  For each of the twelve months of the year,  count how many stores' minimum average daily revenue was in that month.  During which month(s) did over 100 stores have their minimum average daily revenue?
+
+SELECT ranked_sales.store, MIN(ranked_sales.avg_d_sales) AS min_sales, ranked_sales.month_n 
+FROM
+(SELECT SUM(amt) AS total_sales, SUM(amt)/COUNT(DISTINCT saledate) AS avg_d_sales, COUNT(DISTINCT saledate) AS num_days,
+EXTRACT(MONTH from saledate) AS month_n, store  
+FROM trnsact 
+WHERE stype='P' 
+GROUP BY month_n, store
+HAVING COUNT(DISTINCT saledate)>=21) AS ranked_sales
+GROUP BY ranked_sales.store;
