@@ -1,0 +1,14 @@
+Which department in which store had the greatest percent increase in average daily sales revenue from November to December, and what city and state was that store located in?   Only examine departments whose total sales were at least $1,000 in both November and December.
+
+SELECT SUM(c_t.total_sale)/SUM(c_t.num_days), s.store, s.city, s.state, MEDIAN(s.msa_income) AS med,
+CASE WHEN 
+FROM store_msa s INNER JOIN 
+(SELECT SUM(amt) AS total_sale, COUNT(DISTINCT saledate) AS num_days,  
+EXTRACT(MONTH from saledate)||EXTRACT(YEAR from saledate) AS year_month, store 
+FROM trnsact 
+WHERE stype='P' AND NOT(EXTRACT(MONTH from saledate)=8 AND EXTRACT(YEAR from saledate)=2005) 
+HAVING COUNT(DISTINCT saledate)>=21 
+GROUP BY year_month, store) AS c_t 
+ON s.store=c_t.store
+GROUP BY s.store, s.city, s.state
+ORDER BY med ASC; 
