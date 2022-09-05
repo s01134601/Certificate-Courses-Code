@@ -1,3 +1,7 @@
+Note: this file contains all the queries that I used for conducting business metrics analyses based on the database of Dillard's, a departmental store, from 2004 to 2005. 
+Since the queries were executed in Teradata Scratchbook, there is no way of saving the queries and their results. Hence the queries are saved as plain texts. 
+
+
 # Q1: How many distinct dates are there in the saledate column of the transaction table for each month/year/store combination in the database? Sort your results by the number of days per combination in ascending order.
 
 SELECT COUNT(DISTINCT saledate), EXTRACT(MONTH from saledate) AS month_num, EXTRACT(YEAR from saledate) AS year_num, store
