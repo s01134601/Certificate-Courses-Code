@@ -15,8 +15,5 @@ The task was to analyze key business metrics for the Dillards database from 2004
 
 The Python code samples from "Clustering-python.ipynb" are for "Python for Data Science" with Cornell University.
 
-The task was to use K-Means from the Skikit-learn package to cluster data from the "World Happiness Report" into 10 groups, then compare the results with the original classification (from the original dataset) to see if the latter captures the similarities between individual entities in the dataset.
+The task was to use K-Means from the Skikit-learn package to cluster data from the "World Happiness Report" into 10 groups, then plot the centroids of each clustered group. 
 
-I also plot the centroids of each clustered group. 
-
-Furthermore, I use seaborn clustermap to graph a dendrogram showing the results of hierarchical clustering. 
