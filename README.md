@@ -5,7 +5,7 @@ This repository contains coding samples from Coursera courses completed between 
 Dognition is a company that provides tests for its users to assess their dogs' personality.
 It is a subscription-based service, so its revenue depends on the number of tests that users complete. It is looking for ways to increase the number of tests that its users complete. 
 
-In "Assigning ranks to each completed test by chronological order for each dog-user" I analyze the company's test completion database and prepares for Tableau dashboard to show ways to improve the test completion rate.
+This repo contains several Juypter notebooks in which I use SQL, various Python packages and Tableau to investigate Dognition's database, query and compile datasets from the database, clean and analyze these datasets, and visualize the findings aimed at achieving the company's business goal. 
 
 2. Miscellaneous
 
