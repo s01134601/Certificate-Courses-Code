@@ -1,6 +1,7 @@
 This repository contains coding samples from Coursera courses completed between 2021 and 2022;
 
 1. Dognition & Dillards 
+
 I used SQL through MySQL and Teradata to transform raw business transaction data (e.g., user info, product info, test-completion timestamps, store ino, transaction info, etc.) into tables showing key business metrics. Several jupyter notebooks show how I queried, cleaned, aggregated, analyzed and visualized data. 
 
 Each table contain >10k records. 
