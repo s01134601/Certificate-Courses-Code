@@ -1,18 +1,11 @@
 This repository contains coding samples from Coursera courses completed between 2021 and 2022;
 
-1. Dognition Data Analysis Plan 
+1. Dognition & Dillards 
+I used SQL through MySQL and Teradata to transform raw business transaction data (e.g., user info, product info, test-completion timestamps, store ino, transaction info, etc.) into tables showing key business metrics. Several jupyter notebooks show how I queried, cleaned, aggregated, analyzed and visualized data. 
 
-Dognition is a company that provides tests for its users to assess their dogs' personality.
-It is a subscription-based service, so its revenue depends on the number of tests that users complete. It is looking for ways to increase the number of tests that its users complete. 
+Each table contain >10k records. 
 
-This repo contains several Juypter notebooks in which I use SQL, various Python packages and Tableau to investigate Dognition's database, query and compile datasets from the database, clean and analyze these datasets, and visualize the findings aimed at achieving the company's business goal. 
-
-2. Miscellaneous
-
-The SQL code samples in "Business Metrics Analysis - SQL" are for "Managing Big Data with MySQL" with Duke University. 
-
-The task was to analyze key business metrics for the Dillards database from 2004 to 2005 on Teradata. The database contains 6 tables: transaction data, department info, store_msa(containing demographic data on the region), skstinfo(cost and retail prices for each stocking keeping unit), skuinfo (info on each stock keeping unit); Each table contains > 100k entries.
-
+2. Machine Learning 
 The Python code samples from "Clustering-python.ipynb" are for "Python for Data Science" with Cornell University.
 
 The task was to use K-Means from the Skikit-learn package to cluster data from the "World Happiness Report" into 10 groups, then plot the centroids of each clustered group. 
